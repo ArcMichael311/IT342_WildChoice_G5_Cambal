@@ -1,0 +1,118 @@
+/* Sidebar Styles */
+.sidebar {
+  width: 260px;
+  background: #4a0000;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-header {
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-menu {
+  flex: 1;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  margin: 4px 15px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: translateX(4px);
+}
+
+.menu-item.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-weight: 600;
+  border-left: 4px solid white;
+  padding-left: 16px;
+}
+
+.menu-item.logout {
+  margin-top: auto;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.menu-item.logout:hover {
+  background: #ff0000;
+  border-color: #ff0000;
+  transform: translateX(0);
+}
+
+.menu-icon {
+  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: brightness(0) invert(1);
+  object-fit: contain;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 70px;
+  }
+
+  .sidebar-header h2 {
+    font-size: 16px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+
+  .menu-item span:not(.menu-icon) {
+    display: none;
+  }
+
+  .menu-item {
+    justify-content: center;
+    padding: 14px 10px;
+  }
+
+  .menu-item.active {
+    border-left: none;
+    border-right: 4px solid white;
+    padding-right: 6px;
+  }
+}
