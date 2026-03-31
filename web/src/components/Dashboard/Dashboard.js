@@ -7,7 +7,14 @@ function Dashboard() {
   const [user, setUser] = useState(null);
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const avatarObjectUrlRef = useRef('');
 
   const getDefaultAvatarUrl = (nameOrEmail) =>
@@ -106,6 +113,76 @@ function Dashboard() {
   const handleMenuClick = (menuItem) => {
     setActiveMenu(menuItem);
     setProfileMessage('');
+    setShowPasswordForm(false);
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+  };
+
+  const handlePasswordInputChange = (event) => {
+    const { name, value } = event.target;
+    setPasswordForm((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handlePasswordChange = async (event) => {
+    event.preventDefault();
+    setProfileMessage('');
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setProfileMessage('Please fill out all password fields.');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setProfileMessage('New password must be at least 6 characters.');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setProfileMessage('Passwords do not match.');
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordForm.currentPassword
+      });
+
+      if (authError) {
+        setProfileMessage('Current password is incorrect.');
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
+
+      if (error) {
+        setProfileMessage(error.message || 'Unable to change password.');
+        return;
+      }
+
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setShowPasswordForm(false);
+      setProfileMessage('Password changed successfully.');
+    } catch (err) {
+      console.error('Password update failed', err);
+      setProfileMessage('Unable to change password. Please try again.');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const handleAvatarUpload = async (event) => {
@@ -233,17 +310,6 @@ function Dashboard() {
                 <h2>Welcome, {user.username || user.email}!</h2>
                 <p>You have successfully logged in to your account.</p>
               </div>
-
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <h3>Profile</h3>
-                  <div className="stat-info">
-                    <p><strong>Email:</strong> {user.email}</p>
-                    <p><strong>Username:</strong> {user.username || 'N/A'}</p>
-                    <p><strong>Account Created:</strong> {new Date().toLocaleDateString()}</p>
-                  </div>
-                </div>
-              </div>
             </>
           )}
 
@@ -264,34 +330,119 @@ function Dashboard() {
           {activeMenu === 'profile' && (
             <div className="content-section">
               <h2>Profile</h2>
-              <div className="profile-avatar-section">
-                <img
-                  className="profile-avatar"
-                  src={user.avatarUrl || getDefaultAvatarUrl(user.username || user.email)}
-                  alt="Profile"
-                  onError={(event) => {
-                    event.currentTarget.src = getDefaultAvatarUrl(user.username || user.email);
-                  }}
-                />
-                <label className="btn-action profile-upload-btn" htmlFor="profileImageInput">
-                  {uploadingAvatar ? 'Uploading...' : 'Upload Profile Image'}
-                </label>
-                <input
-                  id="profileImageInput"
-                  className="profile-upload-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  disabled={uploadingAvatar}
-                />
-                <p className="profile-hint">Allowed file types: image only, max 2MB.</p>
-                {profileMessage && <p className="profile-message">{profileMessage}</p>}
+              <div className="profile-layout">
+                <div className="profile-avatar-section">
+                  <img
+                    className="profile-avatar"
+                    src={user.avatarUrl || getDefaultAvatarUrl(user.username || user.email)}
+                    alt="Profile"
+                    onError={(event) => {
+                      event.currentTarget.src = getDefaultAvatarUrl(user.username || user.email);
+                    }}
+                  />
+                  <label className="btn-action profile-upload-btn" htmlFor="profileImageInput">
+                    {uploadingAvatar ? 'Uploading...' : 'Upload Profile Image'}
+                  </label>
+                  <input
+                    id="profileImageInput"
+                    className="profile-upload-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    disabled={uploadingAvatar}
+                  />
+                  <p className="profile-hint">Allowed file types: image only, max 2MB.</p>
+                </div>
+
+                <div className="profile-right-panel">
+                  <div className="profile-info-card">
+                    <div className="profile-info-row">
+                      <span className="profile-info-label">Email:</span>
+                      <span className="profile-info-value">{user.email}</span>
+                    </div>
+                    <div className="profile-info-row">
+                      <span className="profile-info-label">Username:</span>
+                      <span className="profile-info-value">{user.username || 'N/A'}</span>
+                    </div>
+                    <div className="profile-info-row">
+                      <span className="profile-info-label">Account Created:</span>
+                      <span className="profile-info-value">{new Date().toLocaleDateString()}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-action password-toggle-btn"
+                      onClick={() => {
+                        setProfileMessage('');
+                        setShowPasswordForm((prev) => !prev);
+                      }}
+                    >
+                      Change Password
+                    </button>
+                  </div>
+
+                  {showPasswordForm && (
+                    <form className="password-form" onSubmit={handlePasswordChange}>
+                      <h3>Change Password</h3>
+                      <div className="password-field-group">
+                        <label htmlFor="currentPassword">Current Password</label>
+                        <input
+                          id="currentPassword"
+                          name="currentPassword"
+                          type="password"
+                          value={passwordForm.currentPassword}
+                          onChange={handlePasswordInputChange}
+                          placeholder="Enter current password"
+                        />
+                      </div>
+                      <div className="password-field-group">
+                        <label htmlFor="newPassword">New Password</label>
+                        <input
+                          id="newPassword"
+                          name="newPassword"
+                          type="password"
+                          value={passwordForm.newPassword}
+                          onChange={handlePasswordInputChange}
+                          placeholder="Enter new password"
+                        />
+                      </div>
+                      <div className="password-field-group">
+                        <label htmlFor="confirmPassword">Confirm New Password</label>
+                        <input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type="password"
+                          value={passwordForm.confirmPassword}
+                          onChange={handlePasswordInputChange}
+                          placeholder="Confirm new password"
+                        />
+                      </div>
+                      <div className="password-actions">
+                        <button type="submit" className="btn-action" disabled={changingPassword}>
+                          {changingPassword ? 'Updating...' : 'Save New Password'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-action password-cancel-btn"
+                          onClick={() => {
+                            setShowPasswordForm(false);
+                            setProfileMessage('');
+                            setPasswordForm({
+                              currentPassword: '',
+                              newPassword: '',
+                              confirmPassword: ''
+                            });
+                          }}
+                          disabled={changingPassword}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               </div>
-              <div className="stat-info">
-                <p><strong>Email:</strong> {user.email}</p>
-                <p><strong>Username:</strong> {user.username || 'N/A'}</p>
-                <p><strong>Account Created:</strong> {new Date().toLocaleDateString()}</p>
-              </div>
+              {profileMessage && <p className="profile-message">{profileMessage}</p>}
             </div>
           )}
         </div>

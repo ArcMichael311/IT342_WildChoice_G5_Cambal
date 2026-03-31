@@ -149,24 +149,28 @@
 .profile-avatar-section {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  padding: 20px;
+  background: #fff7f7;
+  border: 1px solid #f0d9d9;
+  border-radius: 14px;
 }
 
 .profile-avatar {
-  width: 120px;
-  height: 120px;
+  width: 230px;
+  height: 230px;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #4a0000;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  border: 6px solid #4a0000;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .profile-upload-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 220px;
 }
 
 .profile-upload-input {
@@ -180,10 +184,117 @@
 }
 
 .profile-message {
-  margin: 0;
+  margin: 18px 0 0;
   font-size: 14px;
   color: #4a0000;
   font-weight: 600;
+}
+
+.profile-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.profile-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-info-card {
+  background: #ffffff;
+  border: 1px solid #ead5d5;
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.password-toggle-btn {
+  margin-top: 18px;
+  width: 100%;
+}
+
+.profile-info-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3e4e4;
+}
+
+.profile-info-row:last-child {
+  border-bottom: none;
+}
+
+.profile-info-label {
+  color: #4a0000;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.profile-info-value {
+  color: #2d2d2d;
+  font-size: 22px;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.password-form {
+  background: #ffffff;
+  border: 1px solid #ead5d5;
+  border-radius: 12px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.password-form h3 {
+  margin: 0;
+  color: #4a0000;
+  font-size: 24px;
+}
+
+.password-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.password-cancel-btn {
+  background: #8f8f8f;
+  box-shadow: 0 3px 6px rgba(80, 80, 80, 0.35);
+}
+
+.password-cancel-btn:hover {
+  background: #7a7a7a;
+  box-shadow: 0 5px 10px rgba(80, 80, 80, 0.45);
+}
+
+.password-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.password-field-group label {
+  color: #4a0000;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.password-field-group input {
+  border: 1px solid #d9bcbc;
+  border-radius: 8px;
+  font-size: 16px;
+  padding: 12px;
+}
+
+.password-field-group input:focus {
+  outline: none;
+  border-color: #4a0000;
+  box-shadow: 0 0 0 3px rgba(74, 0, 0, 0.12);
 }
 
 .btn-action {
@@ -247,5 +358,28 @@
 
   .btn-action {
     width: 100%;
+  }
+
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-info-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .profile-info-label,
+  .profile-info-value {
+    font-size: 18px;
+  }
+
+  .profile-avatar {
+    width: 180px;
+    height: 180px;
+  }
+
+  .password-actions {
+    flex-direction: column;
   }
 }
