@@ -84,6 +84,7 @@ function Dashboard() {
           userId: authUser.id,
           email: authUser.email,
           username: authUser.user_metadata?.username || localUser.username || authUser.email,
+          accountCreated: authUser.created_at || localUser.accountCreated || '',
           avatarPath,
           avatarUrl: signedAvatarUrl || authUser.user_metadata?.avatar_url || ''
         };
@@ -366,7 +367,9 @@ function Dashboard() {
                     </div>
                     <div className="profile-info-row">
                       <span className="profile-info-label">Account Created:</span>
-                      <span className="profile-info-value">{new Date().toLocaleDateString()}</span>
+                      <span className="profile-info-value">
+                        {user.accountCreated ? new Date(user.accountCreated).toLocaleDateString() : 'N/A'}
+                      </span>
                     </div>
 
                     <button
