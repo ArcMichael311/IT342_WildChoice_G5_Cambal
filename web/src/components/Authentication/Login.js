@@ -35,11 +35,31 @@ function Login() {
 
       // Save user data to localStorage
       const username = authData.user.user_metadata?.username || authData.user.email.split('@')[0];
+      const profileRole = authData.user.user_metadata?.role || 'student';
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+      const role = profileData?.role || profileRole;
+
+      await supabase.from('profiles').upsert({
+        id: authData.user.id,
+        email: authData.user.email,
+        username,
+        role,
+        created_at: authData.user.created_at || new Date().toISOString()
+      });
+
       localStorage.setItem('token', authData.session.access_token);
       localStorage.setItem('user', JSON.stringify({
         userId: authData.user.id,
         username: username,
-        email: authData.user.email
+        email: authData.user.email,
+        role,
+        accountCreated: authData.user.created_at || ''
       }));
       
       // Redirect to dashboard

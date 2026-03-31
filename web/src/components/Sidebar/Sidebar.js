@@ -4,9 +4,10 @@ import HomeIcon from './Sidebar Icons/Home.png';
 import VotePollIcon from './Sidebar Icons/Vote Poll.png';
 import ResultIcon from './Sidebar Icons/Result.png';
 import ProfileIcon from './Sidebar Icons/Profile.png';
+import VerifiedUserIcon from './Sidebar Icons/verified-user.png';
 import LogoutIcon from './Sidebar Icons/logout.png';
 
-function Sidebar({ activeMenu, onMenuClick, onLogout }) {
+function Sidebar({ activeMenu, onMenuClick, onLogout, isAdmin }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -21,12 +22,21 @@ function Sidebar({ activeMenu, onMenuClick, onLogout }) {
           <span>Dashboard</span>
         </button>
         <button
-          className={`menu-item ${activeMenu === 'voting-poll' ? 'active' : ''}`}
-          onClick={() => onMenuClick('voting-poll')}
+          className={`menu-item ${activeMenu === 'poll-request' ? 'active' : ''}`}
+          onClick={() => onMenuClick('poll-request')}
         >
-          <img src={VotePollIcon} alt="Voting Poll" className="menu-icon" />
-          <span>Voting Poll</span>
+          <img src={VotePollIcon} alt="Poll Reqest" className="menu-icon" />
+          <span>Poll Reqest</span>
         </button>
+        {isAdmin && (
+          <button
+            className={`menu-item ${activeMenu === 'user-verification' ? 'active' : ''}`}
+            onClick={() => onMenuClick('user-verification')}
+          >
+            <img src={VerifiedUserIcon} alt="User Verification" className="menu-icon" />
+            <span>User Verification</span>
+          </button>
+        )}
         <button
           className={`menu-item ${activeMenu === 'result' ? 'active' : ''}`}
           onClick={() => onMenuClick('result')}

@@ -44,13 +44,19 @@ function Register() {
     setLoading(true);
 
     try {
+      const isDefaultAdmin =
+        formData.email.trim().toLowerCase() === 'cit.admin@cit.edu' &&
+        formData.username.trim() === 'Cit Admin';
+      const assignedRole = isDefaultAdmin ? 'admin' : 'student';
+
       // Sign up with Supabase
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
-            username: formData.username
+            username: formData.username,
+            role: assignedRole
           }
         }
       });
@@ -65,11 +71,23 @@ function Register() {
         return;
       }
 
+      if (authData?.user?.id) {
+        await supabase.from('profiles').upsert({
+          id: authData.user.id,
+          email: formData.email,
+          username: formData.username,
+          role: assignedRole,
+          created_at: authData.user.created_at || new Date().toISOString()
+        });
+      }
+
       // Save user data to localStorage
       localStorage.setItem('user', JSON.stringify({
         userId: authData.user.id,
         username: formData.username,
-        email: formData.email
+        email: formData.email,
+        role: assignedRole,
+        accountCreated: authData.user.created_at || ''
       }));
       
       // Show success message

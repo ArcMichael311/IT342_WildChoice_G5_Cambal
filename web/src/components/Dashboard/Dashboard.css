@@ -297,6 +297,77 @@
   box-shadow: 0 0 0 3px rgba(74, 0, 0, 0.12);
 }
 
+.verification-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.verification-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.verification-group {
+  background: #fff;
+  border: 1px solid #ead9d9;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.verification-group h3 {
+  margin: 0 0 14px;
+  color: #4a0000;
+  font-size: 20px;
+}
+
+.verification-card {
+  background: #fffdfd;
+  border: 1px solid #e8d5d5;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.verification-meta p {
+  margin: 4px 0;
+}
+
+.verification-error {
+  border: 1px solid #f2b7b7;
+  background: #fff2f2;
+  color: #7d1010;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.role-student {
+  background: #f5f5f5;
+  color: #444;
+}
+
+.role-teacher {
+  background: #e9f8ee;
+  color: #1f7a39;
+}
+
+.role-admin {
+  background: #fde8e8;
+  color: #8a1212;
+}
+
 .btn-action {
   padding: 12px 24px;
   background: #4a0000;

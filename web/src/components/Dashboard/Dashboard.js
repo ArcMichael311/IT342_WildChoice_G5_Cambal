@@ -4,12 +4,17 @@ import './Dashboard.css';
 import { supabase } from '../../config/supabaseClient';
 
 function Dashboard() {
+  const ADMIN_EMAIL = 'cit.admin@cit.edu';
   const [user, setUser] = useState(null);
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+  const [verificationUsers, setVerificationUsers] = useState([]);
+  const [verificationSource, setVerificationSource] = useState('profiles');
+  const [loadingVerificationUsers, setLoadingVerificationUsers] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -66,6 +71,30 @@ function Dashboard() {
         }
 
         const localUser = JSON.parse(localStorage.getItem('user') || '{}');
+        let resolvedRole = authUser.user_metadata?.role || localUser.role || 'student';
+
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', authUser.id)
+          .maybeSingle();
+
+        if (profileData?.role) {
+          resolvedRole = profileData.role;
+        }
+
+        if (authUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+          resolvedRole = 'admin';
+        }
+
+        await supabase.from('profiles').upsert({
+          id: authUser.id,
+          email: authUser.email,
+          username: authUser.user_metadata?.username || localUser.username || authUser.email,
+          role: resolvedRole,
+          created_at: authUser.created_at || new Date().toISOString()
+        });
+
         const avatarPath = authUser.user_metadata?.avatar_path || '';
         const blobAvatarUrl = await getAvatarBlobUrl(avatarPath);
         const signedAvatarUrl = blobAvatarUrl || await getSignedAvatarUrl(avatarPath);
@@ -84,6 +113,7 @@ function Dashboard() {
           userId: authUser.id,
           email: authUser.email,
           username: authUser.user_metadata?.username || localUser.username || authUser.email,
+          role: resolvedRole,
           accountCreated: authUser.created_at || localUser.accountCreated || '',
           avatarPath,
           avatarUrl: signedAvatarUrl || authUser.user_metadata?.avatar_url || ''
@@ -112,6 +142,11 @@ function Dashboard() {
   };
 
   const handleMenuClick = (menuItem) => {
+    if (menuItem === 'user-verification' && user?.role !== 'admin') {
+      setProfileMessage('Only admins can access User Verification.');
+      return;
+    }
+
     setActiveMenu(menuItem);
     setProfileMessage('');
     setShowPasswordForm(false);
@@ -120,6 +155,132 @@ function Dashboard() {
       newPassword: '',
       confirmPassword: ''
     });
+  };
+
+  const loadVerificationUsers = async () => {
+    setLoadingVerificationUsers(true);
+    setVerificationError('');
+    try {
+      let profileErrorMessage = '';
+      const { data: profileRows, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, username, role, created_at')
+        .order('created_at', { ascending: true });
+
+      if (profileError) {
+        profileErrorMessage = profileError.message || 'Unable to load users from profiles.';
+      }
+
+      let normalizedUsers = (profileRows || []).map((entry) => ({
+        id: entry.id,
+        idField: 'id',
+        email: entry.email,
+        username: entry.username || entry.email?.split('@')[0] || 'N/A',
+        role: entry.role || 'student',
+        created_at: entry.created_at
+      }));
+
+      normalizedUsers = normalizedUsers.filter(
+        (entry) => (entry.email || '').toLowerCase() !== ADMIN_EMAIL.toLowerCase()
+      );
+
+      let source = 'profiles';
+
+      // Fallback: support projects that already store users in a users table.
+      if (normalizedUsers.length === 0) {
+        const { data: userRows, error: usersError } = await supabase
+          .from('users')
+          .select('*');
+
+        if (!usersError && Array.isArray(userRows) && userRows.length > 0) {
+          source = 'users';
+          normalizedUsers = userRows
+            .map((entry) => {
+              const resolvedId = entry.id || entry.user_id;
+              const idField = entry.id ? 'id' : 'user_id';
+
+              if (!resolvedId) {
+                return null;
+              }
+
+              return {
+                id: resolvedId,
+                idField,
+                email: entry.email || 'N/A',
+                username: entry.username || entry.email?.split('@')[0] || 'N/A',
+                role: entry.role || 'student',
+                created_at: entry.created_at || ''
+              };
+            })
+            .filter(
+              (entry) =>
+                entry && (entry.email || '').toLowerCase() !== ADMIN_EMAIL.toLowerCase()
+            );
+        } else if (usersError && profileErrorMessage) {
+          setVerificationError(`${profileErrorMessage} Fallback users query also failed: ${usersError.message || 'Unable to load users table.'}`);
+        } else if (usersError && !profileErrorMessage) {
+          setVerificationError(usersError.message || 'Unable to load users for verification.');
+        }
+      }
+
+      if (normalizedUsers.length === 0 && profileErrorMessage && !verificationError) {
+        setVerificationError(profileErrorMessage);
+      }
+
+      setVerificationSource(source);
+      setVerificationUsers(normalizedUsers);
+    } catch (err) {
+      console.error('Failed to load verification users', err);
+      setVerificationError('Unable to load users for verification.');
+    } finally {
+      setLoadingVerificationUsers(false);
+    }
+  };
+
+  const updateUserRole = async (targetUserId, nextRole) => {
+    if (user?.role !== 'admin') {
+      setProfileMessage('Only admins can update user roles.');
+      return;
+    }
+
+    if (targetUserId === user.userId) {
+      setProfileMessage('Admin account role cannot be changed.');
+      return;
+    }
+
+    try {
+      const targetEntry = verificationUsers.find((entry) => entry.id === targetUserId);
+      const targetIdField = targetEntry?.idField || 'id';
+
+      const { error } = await supabase
+        .from(verificationSource)
+        .update({ role: nextRole })
+        .eq(targetIdField, targetUserId);
+
+      if (error) {
+        setProfileMessage(error.message || 'Failed to update user role.');
+        return;
+      }
+
+      setVerificationUsers((prevUsers) =>
+        prevUsers.map((entry) =>
+          entry.id === targetUserId
+            ? {
+                ...entry,
+                role: nextRole
+              }
+            : entry
+        )
+      );
+      setProfileMessage(
+        nextRole === 'teacher'
+          ? 'User promoted to teacher successfully.'
+          : 'Teacher demoted to student successfully.'
+      );
+    } catch (err) {
+      console.error('Failed to update user role', err);
+      setProfileMessage('Failed to update user role.');
+    }
   };
 
   const handlePasswordInputChange = (event) => {
@@ -283,9 +444,49 @@ function Dashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    if (activeMenu === 'user-verification' && user?.role === 'admin') {
+      loadVerificationUsers();
+    }
+  }, [activeMenu, user]);
+
   if (!user) {
     return <div className="loading">Loading...</div>;
   }
+
+  const studentUsers = verificationUsers.filter((entry) => (entry.role || 'student') === 'student');
+  const teacherUsers = verificationUsers.filter((entry) => (entry.role || 'student') === 'teacher');
+
+  const renderVerificationCard = (entry) => (
+    <div className="verification-card" key={entry.id}>
+      <div className="verification-meta">
+        <p><strong>Username:</strong> {entry.username || 'N/A'}</p>
+        <p><strong>Email:</strong> {entry.email}</p>
+        <p>
+          <strong>Role:</strong>{' '}
+          <span className={`role-pill role-${entry.role || 'student'}`}>
+            {(entry.role || 'student').charAt(0).toUpperCase() + (entry.role || 'student').slice(1)}
+          </span>
+        </p>
+      </div>
+      <button
+        className="btn-action"
+        disabled={entry.role === 'admin'}
+        onClick={() =>
+          updateUserRole(
+            entry.id,
+            entry.role === 'teacher' ? 'student' : 'teacher'
+          )
+        }
+      >
+        {entry.role === 'admin'
+          ? 'Admin Account'
+          : entry.role === 'teacher'
+            ? 'Demote to Student'
+            : 'Promote to Teacher'}
+      </button>
+    </div>
+  );
 
   return (
     <div className="dashboard-container">
@@ -293,6 +494,7 @@ function Dashboard() {
         activeMenu={activeMenu}
         onMenuClick={handleMenuClick}
         onLogout={handleLogout}
+        isAdmin={user?.role === 'admin'}
       />
 
       {/* Main content */}
@@ -314,10 +516,14 @@ function Dashboard() {
             </>
           )}
 
-          {activeMenu === 'voting-poll' && (
+          {activeMenu === 'poll-request' && (
             <div className="content-section">
-              <h2>Voting Poll</h2>
-              <p>Voting poll content will be displayed here.</p>
+              <h2>Poll Reqest</h2>
+              {user.role === 'admin' ? (
+                <p>Admin can review and verify poll requests in this section.</p>
+              ) : (
+                <p>Students can submit poll requests here and wait for admin verification.</p>
+              )}
             </div>
           )}
 
@@ -370,6 +576,10 @@ function Dashboard() {
                       <span className="profile-info-value">
                         {user.accountCreated ? new Date(user.accountCreated).toLocaleDateString() : 'N/A'}
                       </span>
+                    </div>
+                    <div className="profile-info-row">
+                      <span className="profile-info-label">Role:</span>
+                      <span className="profile-info-value">{user.role || 'student'}</span>
                     </div>
 
                     <button
@@ -446,6 +656,48 @@ function Dashboard() {
                 </div>
               </div>
               {profileMessage && <p className="profile-message">{profileMessage}</p>}
+            </div>
+          )}
+
+          {activeMenu === 'user-verification' && (
+            <div className="content-section">
+              <h2>User Verification</h2>
+              {user.role !== 'admin' ? (
+                <p>Only admins can access this section.</p>
+              ) : loadingVerificationUsers ? (
+                <p>Loading users...</p>
+              ) : verificationError ? (
+                <div className="verification-error">
+                  <p><strong>Unable to load users:</strong> {verificationError}</p>
+                  <p>Check your `profiles` table RLS SELECT policy for admin access.</p>
+                </div>
+              ) : verificationUsers.length === 0 ? (
+                <p>No users found. Register users first to manage roles.</p>
+              ) : (
+                <div className="verification-groups">
+                  <section className="verification-group">
+                    <h3>Students ({studentUsers.length})</h3>
+                    {studentUsers.length === 0 ? (
+                      <p>No students found.</p>
+                    ) : (
+                      <div className="verification-list">
+                        {studentUsers.map((entry) => renderVerificationCard(entry))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="verification-group">
+                    <h3>Teachers ({teacherUsers.length})</h3>
+                    {teacherUsers.length === 0 ? (
+                      <p>No teachers found.</p>
+                    ) : (
+                      <div className="verification-list">
+                        {teacherUsers.map((entry) => renderVerificationCard(entry))}
+                      </div>
+                    )}
+                  </section>
+                </div>
+              )}
             </div>
           )}
         </div>
