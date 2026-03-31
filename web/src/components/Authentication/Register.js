@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './Auth.css';
+import { supabase } from '../../config/supabaseClient';
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -22,6 +23,12 @@ function Register() {
     e.preventDefault();
     setError('');
 
+    // Validate username
+    if (!formData.username.trim()) {
+      setError('Username is required');
+      return;
+    }
+
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -37,41 +44,42 @@ function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password
-        })
+      // Sign up with Supabase
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            username: formData.username
+          }
+        }
       });
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (parseError) {
-        console.error('Failed to parse register response', parseError);
-        setError('Server error. Please try again.');
+      if (signUpError) {
+        // Handle specific rate limit error
+        if (signUpError.message.includes('rate limit') || signUpError.message.includes('Rate limit')) {
+          setError('Too many registration attempts. Please wait a few minutes and try again with a different email address.');
+        } else {
+          setError(signUpError.message || 'Registration failed');
+        }
         return;
       }
 
-      if (response.ok) {
-        // Save token to localStorage
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify({
-          userId: data.userId,
-          username: data.username,
-          email: data.email
-        }));
-        
-        // Redirect to dashboard
+      // Save user data to localStorage
+      localStorage.setItem('user', JSON.stringify({
+        userId: authData.user.id,
+        username: formData.username,
+        email: formData.email
+      }));
+      
+      // Show success message
+      setError('');
+      alert('Registration successful! Check your email to confirm.');
+      
+      // Redirect to dashboard
+      setTimeout(() => {
         window.location.href = '/dashboard';
-      } else {
-        setError(data.message || 'Registration failed');
-      }
+      }, 2000);
     } catch (err) {
       console.error('Registration request failed', err);
       setError('Network error. Could not reach server.');

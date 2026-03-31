@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './Auth.css';
+import { supabase } from '../../config/supabaseClient';
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -22,37 +23,27 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
+      const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password
       });
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (parseError) {
-        console.error('Failed to parse login response', parseError);
-        setError('Server error. Please try again.');
+      if (loginError) {
+        setError(loginError.message || 'Login failed');
         return;
       }
 
-      if (response.ok) {
-        // Save token to localStorage
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify({
-          userId: data.userId,
-          username: data.username,
-          email: data.email
-        }));
-        
-        // Redirect to dashboard
-        window.location.href = '/dashboard';
-      } else {
-        setError(data.message || 'Login failed');
-      }
+      // Save user data to localStorage
+      const username = authData.user.user_metadata?.username || authData.user.email.split('@')[0];
+      localStorage.setItem('token', authData.session.access_token);
+      localStorage.setItem('user', JSON.stringify({
+        userId: authData.user.id,
+        username: username,
+        email: authData.user.email
+      }));
+      
+      // Redirect to dashboard
+      window.location.href = '/dashboard';
     } catch (err) {
       console.error('Login request failed', err);
       setError('Network error. Could not reach server.');
